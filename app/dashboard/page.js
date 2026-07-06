@@ -25,12 +25,14 @@ export default function DashboardPage() {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("expense");
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [formError, setFormError] = useState("");
 
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editType, setEditType] = useState("expense");
+  const [editDate, setEditDate] = useState("");
   const [editError, setEditError] = useState("");
 
   useEffect(() => {
@@ -68,13 +70,17 @@ export default function DashboardPage() {
       setFormError("Add a short description for this entry.");
       return;
     }
+    if (!entryDate) {
+      setFormError("Please select a date for this entry.");
+      return;
+    }
 
     const entry = {
       id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       amount: Math.round(parsedAmount * 100) / 100,
       description: description.trim(),
       type,
-      date: new Date().toISOString(),
+      date: new Date(entryDate).toISOString(),
     };
 
     const next = [entry, ...transactions];
@@ -110,6 +116,7 @@ export default function DashboardPage() {
     setEditAmount(String(t.amount));
     setEditDescription(t.description);
     setEditType(t.type);
+    setEditDate(new Date(t.date).toISOString().split('T')[0]);
     setEditError("");
   }
 
@@ -128,11 +135,16 @@ export default function DashboardPage() {
       setEditError("Add a short description for this entry.");
       return;
     }
+    if (!editDate) {
+      setEditError("Please select a date.");
+      return;
+    }
 
     const updates = {
       amount: Math.round(parsedAmount * 100) / 100,
       description: editDescription.trim(),
       type: editType,
+      date: new Date(editDate).toISOString(),
     };
 
     const next = transactions.map((t) =>
@@ -296,6 +308,19 @@ export default function DashboardPage() {
                   />
                 </div>
 
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="entryDate" className="text-sm font-semibold text-ink">
+                    Date
+                  </label>
+                  <input
+                    id="entryDate"
+                    type="date"
+                    value={entryDate}
+                    onChange={(e) => setEntryDate(e.target.value)}
+                    className="w-full rounded-[10px] border-2 border-paper-line bg-white px-4 py-3 text-[16px] text-ink focus:border-brass focus:outline-none transition-colors"
+                  />
+                </div>
+
                 {formError && (
                   <p className="text-brick-deep text-sm font-medium" aria-live="polite">
                     {formError}
@@ -388,6 +413,14 @@ export default function DashboardPage() {
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
                             aria-label="Description"
+                            className="w-full rounded-[9px] border-2 border-paper-line bg-white px-3 py-2 text-[14px] text-ink focus:border-brass focus:outline-none transition-colors"
+                          />
+
+                          <input
+                            type="date"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                            aria-label="Date"
                             className="w-full rounded-[9px] border-2 border-paper-line bg-white px-3 py-2 text-[14px] text-ink focus:border-brass focus:outline-none transition-colors"
                           />
 
