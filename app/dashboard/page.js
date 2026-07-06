@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { hasSession, endSession } from "../../lib/auth";
 import {
   getTransactions,
-  saveTransactions,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction,
+  clearAllTransactions,
   computeBalance,
   formatCurrency,
   formatDate,
@@ -35,8 +38,14 @@ export default function DashboardPage() {
       router.replace("/");
       return;
     }
-    setTransactions(getTransactions());
-    setReady(true);
+    
+    async function loadData() {
+      const data = await getTransactions();
+      setTransactions(data);
+      setReady(true);
+    }
+    
+    loadData();
   }, [router]);
 
   const balance = useMemo(() => computeBalance(transactions), [transactions]);
@@ -46,7 +55,7 @@ export default function DashboardPage() {
     [transactions]
   );
 
-  function handleAdd(e) {
+  async function handleAdd(e) {
     e.preventDefault();
     setFormError("");
 
@@ -61,7 +70,7 @@ export default function DashboardPage() {
     }
 
     const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       amount: Math.round(parsedAmount * 100) / 100,
       description: description.trim(),
       type,
@@ -70,16 +79,17 @@ export default function DashboardPage() {
 
     const next = [entry, ...transactions];
     setTransactions(next);
-    saveTransactions(next);
     setAmount("");
     setDescription("");
+    
+    await addTransaction(entry);
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     const next = transactions.filter((t) => t.id !== id);
     setTransactions(next);
-    saveTransactions(next);
     if (editingId === id) setEditingId(null);
+    await deleteTransaction(id);
   }
 
   function handleLogout() {
@@ -87,12 +97,12 @@ export default function DashboardPage() {
     router.push("/");
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
     const confirmed = window.confirm("Delete all entries? This can't be undone.");
     if (!confirmed) return;
     setTransactions([]);
-    saveTransactions([]);
     setEditingId(null);
+    await clearAllTransactions();
   }
 
   function startEdit(t) {
@@ -108,7 +118,7 @@ export default function DashboardPage() {
     setEditError("");
   }
 
-  function saveEdit(id) {
+  async function saveEdit(id) {
     const parsedAmount = parseFloat(editAmount);
     if (!editAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
       setEditError("Enter an amount greater than zero.");
@@ -119,19 +129,18 @@ export default function DashboardPage() {
       return;
     }
 
+    const updates = {
+      amount: Math.round(parsedAmount * 100) / 100,
+      description: editDescription.trim(),
+      type: editType,
+    };
+
     const next = transactions.map((t) =>
-      t.id === id
-        ? {
-            ...t,
-            amount: Math.round(parsedAmount * 100) / 100,
-            description: editDescription.trim(),
-            type: editType,
-          }
-        : t
+      t.id === id ? { ...t, ...updates } : t
     );
     setTransactions(next);
-    saveTransactions(next);
     setEditingId(null);
+    await updateTransaction(id, updates);
   }
 
   if (!ready) return null;
@@ -444,7 +453,7 @@ export default function DashboardPage() {
         )}
 
         <p className="text-center text-ink-soft/70 text-xs">
-          Entries are saved on this device only.
+          Entries are securely saved to the cloud and available across devices.
         </p>
       </div>
     </main>
